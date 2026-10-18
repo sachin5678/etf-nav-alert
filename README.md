@@ -30,10 +30,33 @@ B. iNAV below declared NAV — 1
 
 ## Schedule
 
-| IST | UTC | Cron |
+| IST (Mon–Fri) | cron-job.org job | GitHub trigger |
 |---|---|---|
-| 10:00 Mon–Fri | 04:30 | `30 4 * * 1-5` |
-| 14:30 Mon–Fri | 09:00 | `0 9 * * 1-5` |
+| 10:00 | `ETF NAV Alert \| Discount check (10:00 IST)` — id 8671236 | `workflow_dispatch` |
+| 14:30 | `ETF NAV Alert \| Discount check (14:30 IST)` — id 8671237 | `workflow_dispatch` |
+
+Scheduling is done by **cron-job.org** (both jobs use timezone `Asia/Kolkata`),
+not by GitHub's own cron. Each job is a single HTTPS request:
+
+```
+POST https://api.github.com/repos/sachin5678/etf-nav-alert/actions/workflows/etf-nav-alert.yml/dispatches
+Authorization: Bearer <fine-grained PAT: Actions: read & write>
+Accept: application/vnd.github+json
+Content-Type: application/json
+X-GitHub-Api-Version: 2022-11-28
+
+{"ref":"main","inputs":{"stale_ok":false}}
+```
+
+`stale_ok:false` is passed explicitly on purpose: a bare `workflow_dispatch`
+would apply the input's default (`true`) and alert on holidays too.
+
+Why not GitHub's built-in `schedule:`? It fires 5–30 minutes late at busy times
+and, worse, scheduled workflows are silently disabled after 60 days without repo
+activity. cron-job.org fires on the minute and emails you when a dispatch fails
+(notify-on-failure is enabled on both jobs). The UTC cron lines are left
+commented out in the workflow — re-enable them only if you abandon cron-job.org,
+otherwise every run would fire twice.
 
 NSE holidays need no special handling: the script compares the snapshot date in
 the feed with today's date in IST and stays silent when they differ (i.e. the
@@ -88,9 +111,9 @@ $env:STALE_OK="1"; npm start     # send even on a holiday / weekend
   filter the worst of it; raise `MIN_DISCOUNT_PCT` (e.g. 0.5) for a quieter feed.
 * **Section B is dominated by the day's market move**, since the declared NAV is
   one session behind. Read it as "yesterday's NAV is stale", not as a discount.
-* **GitHub cron can be late** (5–30 min at busy times) and scheduled workflows in
-  an inactive repo are disabled after 60 days — any push or manual run resets
-  that, or dispatch the workflow from an external cron (cron-job.org) with
-  `POST /repos/sachin5678/etf-nav-alert/actions/workflows/etf-nav-alert.yml/dispatches`.
+* **Scheduling lives outside GitHub** (see [Schedule](#schedule)). If the two
+  cron-job.org jobs are ever disabled, nothing runs. Both jobs email on failure,
+  and GitHub keeps the workflow file even if it is never auto-triggered. The
+  built-in cron fallback is commented out in the workflow file.
 * This is a **screener, not trade advice**: an ETF at a discount can be illiquid
   or hard to exit at that price.
