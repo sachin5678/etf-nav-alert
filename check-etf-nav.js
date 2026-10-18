@@ -294,7 +294,13 @@ async function send(text) {
 
   const id = await send(message);
   console.log(`Telegram message ${id} sent to chat ${process.env.TELEGRAM_CHAT_ID}.`);
-})().catch((err) => {
+})().catch(async (err) => {
   console.error("FAILED:", err.message);
+  // Best-effort heads-up so a broken run does not fail silently.
+  try {
+    await send(`\u26a0\ufe0f <b>ETF discount alert run failed</b>\n<code>${esc(err.message)}</code>`);
+  } catch {
+    /* the token is probably the thing that is broken */
+  }
   process.exit(1);
 });
