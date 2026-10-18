@@ -1,0 +1,42 @@
+name: ETF discount alert
+
+# Twice every trading day, Mon-Fri, IST:
+#   10:00 IST = 04:30 UTC
+#   14:30 IST = 09:00 UTC
+# NSE holidays are handled inside the script: if the NSE snapshot is not from
+# today, nothing is sent.
+on:
+  schedule:
+    - cron: "30 4 * * 1-5"
+    - cron: "0 9 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      stale_ok:
+        description: "Send even if the NSE snapshot is not from today (manual test)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: etf-nav-alert
+  cancel-in-progress: false
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Check ETF discounts and alert on Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          STALE_OK: ${{ github.event_name == 'workflow_dispatch' && inputs.stale_ok && '1' || '' }}
+        run: node check-etf-nav.js

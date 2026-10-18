@@ -1,0 +1,15 @@
+{
+  "name": "etf-nav-alert",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Twice-daily Telegram alert when NSE-listed ETFs trade at a discount (LTP vs iNAV, iNAV vs NAV)",
+  "main": "check-etf-nav.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env check-etf-nav.js",
+    "test": "node --env-file-if-exists=.env --env DRY_RUN=1 check-etf-nav.js",
+    "force": "node --env-file-if-exists=.env --env STALE_OK=1 check-etf-nav.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
